@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>RAG Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#080b0f;
+  --panel:#0e1318;
+  --border:#1c2530;
+  --border2:#243040;
+  --accent:#00e5ff;
+  --accent2:#7c4dff;
+  --success:#00e676;
+  --warn:#ff6d00;
+  --text:#e8edf2;
+  --muted:#4a6070;
+  --muted2:#2a3a48;
+  --user-bg:#0a1628;
+  --bot-bg:#0e1318;
+  --radius:14px;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+
+/* grid background */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* glow orbs */
+body::after{
+  content:'';
+  position:fixed;
+  width:600px;height:600px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(124,77,255,.08) 0%, transparent 70%);
+  top:-200px;right:-200px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  position:relative;z-index:10;
+  display:flex;align-items:center;gap:16px;
+  padding:14px 28px;
+  background:rgba(14,19,24,.9);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  flex-shrink:0;
+}
+
+.logo-mark{
+  width:38px;height:38px;
+  border:1px solid var(--accent);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  box-shadow:0 0 16px rgba(0,229,255,.2);
+  flex-shrink:0;
+}
+
+.header-text h1{
+  font-family:'DM Serif Display',serif;
+  font-size:20px;
+  letter-spacing:-.3px;
+  color:var(--text);
+}
+.header-text h1 span{color:var(--accent);}
+.header-text p{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.5px;text-transform:uppercase;}
+
+.status-pill{
+  margin-left:auto;
+  display:flex;align-items:center;gap:7px;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:20px;
+  padding:6px 14px;
+  font-size:11px;
+  color:var(--muted);
+}
+.status-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--muted);
+  transition:background .3s;
+}
+.status-dot.ready{background:var(--success);box-shadow:0 0 8px var(--success);}
+
+/* ── MAIN LAYOUT ── */
+.layout{
+  position:relative;z-index:1;
+  flex:1;display:flex;overflow:hidden;
+}
+
+/* ── SIDEBAR ── */
+aside{
+  width:300px;flex-shrink:0;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+.sidebar-section{
+  padding:20px;
+  border-bottom:1px solid var(--border);
+}
+
+.sidebar-section h2{
+  font-size:10px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.sidebar-section h2::after{
+  content:'';flex:1;height:1px;background:var(--border2);
+}
+
+/* Upload zone */
+.upload-zone{
+  border:1px dashed var(--border2);
+  border-radius:var(--radius);
+  padding:22px 16px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .2s, background .2s;
+  position:relative;
+  overflow:hidden;
+}
+.upload-zone:hover{border-color:var(--accent);background:rgba(0,229,255,.03);}
+.upload-zone.drag{border-color:var(--accent);background:rgba(0,229,255,.06);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-icon{font-size:26px;margin-bottom:8px;display:block;}
+.upload-zone p{font-size:12px;color:var(--muted);line-height:1.6;}
+.upload-zone strong{color:var(--accent);font-weight:500;}
+
+/* URL input */
+.url-group{display:flex;flex-direction:column;gap:8px;}
+.url-group input{
+  background:var(--bg);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:10px 14px;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:12px;
+  outline:none;
+  transition:border-color .2s;
+}
+.url-group input:focus{border-color:var(--accent);}
+.url-group input::placeholder{color:var(--muted);}
+
+/* Buttons */
+.btn{
+  width:100%;
+  padding:11px;
+  border-radius:10px;
+  border:none;
+  font-family:'DM Mono',monospace;
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  transition:transform .15s, box-shadow .15s, opacity .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn:disabled{opacity:.4;cursor:default;transform:none;}
+
+.btn-primary{
+  background:linear-gradient(135deg, var(--accent2), #5c35cc);
+  color:#fff;
+  box-shadow:0 4px 16px rgba(124,77,255,.25);
+}
+.btn-primary:hover{box-shadow:0 6px 20px rgba(124,77,255,.4);}
+
+.btn-secondary{
+  background:linear-gradient(135deg, #006070, #004050);
+  color:var(--accent);
+  border:1px solid rgba(0,229,255,.2);
+}
+.btn-secondary:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(0,229,255,.15);}
+
+/* Status log */
+.log-area{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.log-area::-webkit-scrollbar{width:4px;}
+.log-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.log-entry{
+  font-size:11px;line-height:1.5;
+  padding:8px 10px;
+  border-radius:8px;
+  border-left:2px solid var(--border2);
+  background:rgba(255,255,255,.02);
+  color:var(--muted);
+  animation:slideIn .2s ease both;
+}
+.log-entry.ok{border-color:var(--success);color:#a0e8c0;}
+.log-entry.err{border-color:var(--warn);color:#ffb07a;}
+.log-entry.info{border-color:var(--accent2);color:#c0a8ff;}
+
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+
+/* ── CHAT ── */
+.chat-area{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;
+}
+
+#chat-window{
+  flex:1;overflow-y:auto;
+  padding:28px 32px;
+  display:flex;flex-direction:column;gap:22px;
+  scroll-behavior:smooth;
+}
+#chat-window::-webkit-scrollbar{width:5px;}
+#chat-window::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* welcome */
+.welcome{
+  margin:auto;
+  text-align:center;
+  max-width:420px;
+  padding:40px 24px;
+}
+.welcome .big{font-size:48px;display:block;margin-bottom:16px;filter:drop-shadow(0 0 20px rgba(0,229,255,.4));}
+.welcome h2{
+  font-family:'DM Serif Display',serif;
+  font-size:26px;margin-bottom:10px;
+  background:linear-gradient(135deg,var(--text),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.welcome p{font-size:12px;color:var(--muted);line-height:1.8;}
+
+/* messages */
+.msg-row{display:flex;gap:12px;align-items:flex-start;animation:rise .3s ease both;}
+.msg-row.user{flex-direction:row-reverse;}
+@keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+.msg-avatar{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;margin-top:2px;
+}
+.msg-row.bot  .msg-avatar{background:var(--panel);border:1px solid var(--border2);}
+.msg-row.user .msg-avatar{background:linear-gradient(135deg,var(--accent2),#5c35cc);}
+
+.msg-content{max-width:min(640px,78%);}
+.bubble{
+  padding:14px 18px;
+  border-radius:var(--radius);
+  font-size:13px;line-height:1.75;
+  white-space:pre-wrap;word-break:break-word;
+}
+.msg-row.bot  .bubble{
+  background:var(--bot-bg);
+  border:1px solid var(--border2);
+  border-top-left-radius:4px;
+  color:var(--text);
+}
+.msg-row.user .bubble{
+  background:var(--user-bg);
+  border:1px solid rgba(124,77,255,.3);
+  border-top-right-radius:4px;
+  color:#c8d8ff;
+}
+.ts{font-size:10px;color:var(--muted);margin-top:5px;padding:0 4px;}
+.msg-row.user .ts{text-align:right;}
+
+/* typing */
+.typing-bubble{
+  background:var(--bot-bg);border:1px solid var(--border2);
+  border-radius:var(--radius);border-top-left-radius:4px;
+  padding:16px 20px;display:flex;gap:5px;align-items:center;
+}
+.typing-bubble span{
+  width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:blink 1.2s infinite ease-in-out;
+}
+.typing-bubble span:nth-child(2){animation-delay:.2s;}
+.typing-bubble span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-7px);opacity:1;}}
+
+/* input bar */
+.input-bar{
+  border-top:1px solid var(--border);
+  padding:16px 28px;
+  background:rgba(14,19,24,.95);
+  backdrop-filter:blur(8px);
+  flex-shrink:0;
+}
+.input-row{display:flex;gap:10px;align-items:flex-end;max-width:800px;margin:0 auto;}
+#user-input{
+  flex:1;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:13px 16px;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:13px;
+  resize:none;min-height:48px;max-height:160px;
+  outline:none;transition:border-color .2s;line-height:1.5;
+}
+#user-input:focus{border-color:var(--accent2);}
+#user-input::placeholder{color:var(--muted);}
+#send-btn{
+  width:48px;height:48px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,var(--accent2),#5c35cc);
+  color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;
+  transition:transform .15s,box-shadow .15s;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(124,77,255,.3);
+}
+#send-btn:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(124,77,255,.5);}
+#send-btn:active{transform:scale(.95);}
+#send-btn:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none;}
+.input-hint{text-align:center;font-size:10px;color:var(--muted);margin-top:8px;letter-spacing:.3px;}
+
+/* toast */
+#toast{
+  display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:#ff3d3d;color:#fff;padding:10px 20px;border-radius:10px;
+  font-size:12px;z-index:999;
+}
+
+/* spinner */
+.spin{display:inline-block;animation:rotate 1s linear infinite;}
+@keyframes rotate{to{transform:rotate(360deg);}}
+
+/* progress bar */
+.progress{
+  height:2px;background:var(--border2);border-radius:1px;margin-top:8px;overflow:hidden;
+}
+.progress-bar{
+  height:100%;width:0;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  border-radius:1px;
+  transition:width .3s ease;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">🧠</div>
+  <div class="header-text">
+    <h1>RAG <span>Intelligence</span></h1>
+    <p>Retrieval Augmented Generation · llama-3.3-70b</p>
+  </div>
+  <div class="status-pill">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-label">No document loaded</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <!-- PDF upload -->
+    <div class="sidebar-section">
+      <h2>Upload PDF</h2>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="pdf-input" accept=".pdf"/>
+        <span class="upload-icon">📄</span>
+        <p><strong>Click or drag</strong> a PDF here<br/>to load it into the knowledge base</p>
+      </div>
+      <div class="progress" id="pdf-progress" style="display:none">
+        <div class="progress-bar" id="pdf-bar"></div>
+      </div>
+    </div>
+
+    <!-- URL ingest -->
+    <div class="sidebar-section">
+      <h2>Web URL</h2>
+      <div class="url-group">
+        <input type="url" id="url-input" placeholder="https://example.com/article"/>
+        <button class="btn btn-secondary" id="url-btn">
+          <span>🌐</span> Fetch & Ingest
+        </button>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="sidebar-section" style="border-bottom:none;flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0">
+      <h2>Activity Log</h2>
+    </div>
+    <div class="log-area" id="log-area">
+      <div class="log-entry info">System ready. Load a document to begin.</div>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <div class="chat-area">
+    <div id="chat-window">
+      <div class="welcome" id="welcome-card">
+        <span class="big">🔍</span>
+        <h2>Ask your documents</h2>
+        <p>Upload a PDF or paste a webpage URL in the sidebar, then ask anything — the AI will answer using only that content.</p>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <div class="input-row">
+        <textarea id="user-input" placeholder="Ask a question about your document…" rows="1"></textarea>
+        <button id="send-btn">➤</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = "http://localhost:8000";
+
+const statusDot   = document.getElementById("status-dot");
+const statusLabel = document.getElementById("status-label");
+const logArea     = document.getElementById("log-area");
+const chatWindow  = document.getElementById("chat-window");
+const userInput   = document.getElementById("user-input");
+const sendBtn     = document.getElementById("send-btn");
+const toast       = document.getElementById("toast");
+const uploadZone  = document.getElementById("upload-zone");
+const pdfInput    = document.getElementById("pdf-input");
+const urlInput    = document.getElementById("url-input");
+const urlBtn      = document.getElementById("url-btn");
+const welcomeCard = document.getElementById("welcome-card");
+
+let isReady   = false;
+let isWaiting = false;
+
+// ── Status polling ──
+async function checkStatus() {
+  try {
+    const r = await fetch(`${API}/status`);
+    const d = await r.json();
+    isReady = d.ready;
+    statusDot.className   = "status-dot" + (isReady ? " ready" : "");
+    statusLabel.textContent = isReady ? "Document loaded ✓" : "No document loaded";
+  } catch { /* server offline */ }
+}
+checkStatus();
+setInterval(checkStatus, 5000);
+
+// ── Log helper ──
+function log(msg, type="info") {
+  const el = document.createElement("div");
+  el.className = `log-entry ${type}`;
+  el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logArea.appendChild(el);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+// ── Toast ──
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = "block";
+  setTimeout(() => toast.style.display = "none", 3500);
+}
+
+// ── PDF Upload ──
+pdfInput.addEventListener("change", async () => {
+  const file = pdfInput.files[0];
+  if (!file) return;
+  await uploadPDF(file);
+});
+
+uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("drag"); });
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag"));
+uploadZone.addEventListener("drop", async e => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === "application/pdf") await uploadPDF(file);
+  else showToast("Please drop a PDF file.");
+});
+
+async function uploadPDF(file) {
+  log(`Uploading '${file.name}'…`, "info");
+  const prog = document.getElementById("pdf-progress");
+  const bar  = document.getElementById("pdf-bar");
+  prog.style.display = "block";
+  bar.style.width = "30%";
+
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    bar.style.width = "60%";
+    const r = await fetch(`${API}/upload-pdf`, { method:"POST", body: form });
+    bar.style.width = "100%";
+    const d = await r.json();
+    if (d.status === "ok") {
+      log(d.message, "ok");
+      isReady = true;
+      statusDot.className   = "status-dot ready";
+      statusLabel.textContent = "Document loaded ✓";
+    } else {
+      log(d.message, "err");
+    }
+  } catch(e) {
+    log("Upload failed — is the server running?", "err");
+    showToast("Server not reachable.");
+  }
+  setTimeout(() => { prog.style.display="none"; bar.style.width="0"; }, 800);
+}
+
+// ── URL Ingest ──
+urlBtn.addEventListener("click", async () => {
+  const url = urlInput.value.trim();
+  if (!url) return;
+  urlBtn.disabled = true;
+  urlBtn.innerHTML = '<span class="spin">⟳</span> Fetching…';
+  log(`Fetching URL: ${url}`, "info");
+  try {
+    const r = await fetch(`${API}/ingest-url`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ url })
+    });
+    const d = await r.json();
+    if (d.status === "ok") {
+      log(d.message, "ok");
+      isReady = true;
+      statusDot.className   = "status-dot ready";
+      statusLabel.textContent = "Document loaded ✓";
+      urlInput.value = "";
+    } else {
+      log(d.message, "err");
+    }
+  } catch(e) {
+    log("URL fetch failed — is the server running?", "err");
+    showToast("Server not reachable.");
+  }
+  urlBtn.disabled = false;
+  urlBtn.innerHTML = '<span>🌐</span> Fetch & Ingest';
+});
+
+// ── Chat ──
+userInput.addEventListener("input", () => {
+  userInput.style.height = "auto";
+  userInput.style.height = userInput.scrollHeight + "px";
+});
+userInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+sendBtn.addEventListener("click", sendMessage);
+
+function ts() { return new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }); }
+
+function addMessage(role, text) {
+  if (welcomeCard) welcomeCard.style.display = "none";
+  const row = document.createElement("div");
+  row.className = `msg-row ${role}`;
+  const avatar = role === "user" ? "🧑" : "🧠";
+  row.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div class="msg-content">
+      <div class="bubble">${escHtml(text)}</div>
+      <div class="ts">${ts()}</div>
+    </div>`;
+  chatWindow.appendChild(row);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function showTyping() {
+  const row = document.createElement("div");
+  row.className = "msg-row bot"; row.id = "typing-row";
+  row.innerHTML = `<div class="msg-avatar">🧠</div>
+    <div class="typing-bubble"><span></span><span></span><span></span></div>`;
+  chatWindow.appendChild(row);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+function hideTyping() { const el = document.getElementById("typing-row"); if(el) el.remove(); }
+
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br/>");
+}
+
+async function sendMessage() {
+  const q = userInput.value.trim();
+  if (!q || isWaiting) return;
+  if (!isReady) { showToast("⚠️ Load a document first!"); return; }
+
+  isWaiting = true; sendBtn.disabled = true;
+  userInput.value = ""; userInput.style.height = "auto";
+  addMessage("user", q);
+  showTyping();
+  try {
+    const r = await fetch(`${API}/chat`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ question: q })
+    });
+    const d = await r.json();
+    hideTyping();
+    addMessage("bot", d.answer || "No response.");
+  } catch(e) {
+    hideTyping();
+    showToast("Server not reachable.");
+    log("Chat failed — is the server running?", "err");
+  }
+  isWaiting = false; sendBtn.disabled = false;
+  userInput.focus();
+}
+</script>
+</body>
+</html>
