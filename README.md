@@ -117,3 +117,5 @@ Choose PDF or URL, then chat in your terminal.
 
 ## 📜 License
 MIT
+
+# RAG-Intelliegence
